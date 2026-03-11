@@ -49,10 +49,10 @@ path <- paste0("C:/Users/", user, "/OneDrive - Stifterverband/Dateiablage - sing
 #      (letzen 4/5 Zeichen von source)
 #   4. Spaltennamen bereinigen und alphabetisch ordnen
 #   5. course_datas zusammenfügen (bind_rows)
-#   6. str_squish und NA-Handling
+#   6. str_squish, NA-Handling, seperator-standardisierung
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-raw_data <- list.files(
+raw_data_saarland <- list.files(
   path = path,
   pattern = "^course_data_\\d{4}[sw]\\.rds$",
   recursive = TRUE,
@@ -76,7 +76,9 @@ raw_data <- list.files(
   bind_rows() %>%
   as_tibble() %>%
   select(all_of(sort(names(.)))) %>%
-  mutate(across(where(is.character), ~ stringr::str_squish(.))) %>%
+  mutate(across(where(is.character), ~ stringr::str_replace_all(.x, "\\s*;\\s*", " ; "))) %>%
+  mutate(across(where(is.character), ~ stringr::str_remove_all(.x, "^(\\s*;\\s*)+|(\\s*;\\s*)+$"))) %>%
+  mutate(across(where(is.character), ~ stringr::str_squish(.x))) %>%
   mutate(across(where(is.character), ~ na_if(.x, ""))) %>%
   mutate(across(where(is.character), ~ na_if(.x, "NA"))) %>%
   mutate(across(where(is.character), ~ na_if(.x, "NaN")))
