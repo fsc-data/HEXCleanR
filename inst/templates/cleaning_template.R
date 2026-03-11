@@ -47,10 +47,9 @@ path <- paste0("C:/Users/", user, "/OneDrive - Stifterverband/Dateiablage - sing
 #   2. source erstellen (Dateiname)
 #   3. semester/jahr erstellen
 #      (letzen 4/5 Zeichen von source)
-#   4. course_datas zusammenfügen (bind_rows)
-#   5. Spaltennamen bereinigen und alphabetisch ordnen
-#   6. leere Strings in character-Spalten
-#      auf NA setzen und str_squish
+#   4. Spaltennamen bereinigen und alphabetisch ordnen
+#   5. course_datas zusammenfügen (bind_rows)
+#   6. str_squish und NA-Handling
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 raw_data <- list.files(
@@ -60,23 +59,27 @@ raw_data <- list.files(
   full.names = TRUE,
   ignore.case = TRUE
 ) %>%
-  map(~ readRDS(.x) %>%
-        mutate(
-          across(
-            .cols = where(~ !is.character(.x)),
-            .fns  = as.list
-          ),
-          source   = tools::file_path_sans_ext(basename(.x)),
-          semester_filename = stringr::str_extract(source, ".{5}$"),
-          jahr_filename = stringr::str_remove_all(semester_filename, "[sw]$")
-        )
+  map(
+    ~ readRDS(.x) %>%
+      janitor::clean_names() %>%
+      mutate(
+        across(
+          .cols = where(~ !is.character(.x) && !is.list(.x)),
+          .fns  = as.character
+        ),
+        source = tools::file_path_sans_ext(basename(.x)),
+        semester_filename = stringr::str_extract(source, ".{5}$"),
+        jahr_filename = stringr::str_remove_all(semester_filename, "[sw]$")
+      ),
+    .progress = TRUE
   ) %>%
   bind_rows() %>%
-  janitor::clean_names() %>%
   as_tibble() %>%
   select(all_of(sort(names(.)))) %>%
   mutate(across(where(is.character), ~ stringr::str_squish(.))) %>%
-  mutate(across(where(is.character), ~ na_if(.x, "")))
+  mutate(across(where(is.character), ~ na_if(.x, ""))) %>%
+  mutate(across(where(is.character), ~ na_if(.x, "NA"))) %>%
+  mutate(across(where(is.character), ~ na_if(.x, "NaN")))
 
 
 #check n/semester
